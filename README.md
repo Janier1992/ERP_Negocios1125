@@ -1,0 +1,227 @@
+# Mi_NegocioERP
+
+Aplicación ERP ligera para PyMEs que integra autenticación, usuarios y roles, inventario, proveedores, clientes, compras, ventas, finanzas, cuentas por pagar, promociones, invitaciones y auditoría, con seguridad basada en RLS de Supabase.
+
+## Características principales
+
+- Autenticación con Supabase Auth y perfiles (`profiles`).
+- Organización multiempresa (`empresas`) con RLS por `empresa_id`.
+- Roles y permisos por empresa (`user_roles`, `permissions`, `role_permissions`).
+- Inventario: categorías y productos con stock y mínimos (`categorias`, `productos`).
+- Proveedores y Clientes con CRUD e índices clave (`proveedores`, `clientes`).
+- Ventas y detalle de venta (`ventas`, `ventas_detalle`) con totales y métodos de pago.
+- Compras y detalle de compra (`compras`, `compras_detalle`) con estados: borrador, pendiente, recibida, anulada.
+- Finanzas: movimientos de ingreso/egreso (`movimientos_financieros`) y reportes JSON (`get_finanzas_resumen`, `get_reportes_resumen`).
+- Cuentas por pagar (CxP) con vencimientos y refresco de estado (`cuentas_por_pagar`, `refresh_cxp_estado`).
+- Promociones por empresa con ventanas de fechas (`promociones`).
+- Empleados e invitaciones con tokens y aceptación (`empleados`, `empleados_invitaciones`, `create_empleado_invitation_ex`, `accept_empleado_invitation`).
+- Auditoría de acciones relevantes (`auditoria`).
+- Políticas RLS exhaustivas por tabla, basadas en `empresa_id` del usuario autenticado.
+
+## Stack tecnológico
+
+- Frontend: `React` + `Vite` + `TypeScript` + `Tailwind CSS` + `shadcn-ui`.
+- Estado y datos: `@tanstack/react-query`.
+- Backend as a Service: `Supabase` (Postgres, Auth, Edge Functions).
+- Pruebas: `Vitest` (+ `jsdom`).
+
+## Requisitos previos
+
+- Node.js LTS (>= 18) y npm.
+- Proyecto de Supabase activo (obtén URL y `anon key`).
+- Supabase CLI (opcional, para gestionar migraciones): `npm i -g supabase`.
+
+## Configuración de entorno
+
+1. Crea/edita el archivo `.env` en la raíz:
+
+```
+VITE_SUPABASE_URL=https://<tu-project-ref>.supabase.co
+VITE_SUPABASE_ANON_KEY=<tu_anon_key>
+```
+
+- Los valores correctos están en Supabase: Project Settings → API.
+- Si ves errores `ERR_NAME_NOT_RESOLVED` al iniciar, revisa que el dominio y la clave sean válidos.
+
+2. Funciones Edge (si las despliegas) requieren en su entorno:
+
+```
+SUPABASE_URL=https://<tu-project-ref>.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=<tu_service_role_key>
+```
+
+> Nota: Nunca expongas la `SERVICE_ROLE_KEY` en el frontend.
+
+## Base de datos y migraciones
+
+- Migración principal: `supabase/migrations/20251028_03_unified_app_schema.sql`.
+  - Crea el enum `public.app_role` mediante bloque `DO $$ ... $$` (compatible con todas las versiones, evita error 42601).
+  - Define tablas, relaciones, índices, triggers y funciones RPC.
+  - Habilita RLS y políticas por empresa.
+  - Inserta semilla mínima de permisos (`manage_users` para `admin`).
+- Limpieza de esquemas: `20251028_04_drop_unused_schemas.sql` (opcional, manual).
+
+### Aplicar migraciones
+
+- Opción A: Editor SQL de Supabase → pega el contenido de `03_unified_app_schema.sql` y ejecuta.
+- Opción B: Supabase CLI:
+
+```
+supabase db push
+# o en local
+supabase start
+supabase db reset
+```
+
+> Recomendado: ejecutar `scripts/backup_before_migration.ps1` (Windows) antes de cambios mayores.
+
+## Desarrollo local
+
+```sh
+npm install
+npm run dev
+# Abre http://localhost:8080
+```
+
+Si cambias variables `VITE_...` en `.env`, reinicia el servidor de Vite para que tomen efecto.
+
+## Módulos y flujo de uso
+
+- Autenticación y perfiles
+  - Registro y login con Supabase Auth (`src/pages/Auth.tsx`).
+  - `profiles` vincula el usuario a una `empresa` y almacena `email`, `full_name`, `username` y `rol` textual.
+
+- Usuarios, roles y permisos
+  - `user_roles` asigna roles (`app_role`: `admin`, `empleado`, `viewer`) por empresa.
+  - `permissions` y `role_permissions` permiten granularidad de acceso.
+  - RPC: `get_user_permissions`, `has_permission`, `has_role`, `assign_roles`.
+  - Hook: `src/hooks/usePermissions.ts` para consumo en UI.
+
+- Inventario
+  - `categorias` y `productos` con `stock`, `stock_minimo`, precios y vínculos a proveedor.
+  - RPC: `apply_purchase_stock` incrementa stock al recibir compras.
+
+- Proveedores y Clientes
+  - CRUD con restricciones e índices (`UNIQUE (empresa_id, nombre)` en clientes, email opcional único por empresa).
+
+- Ventas
+  - `ventas` y `ventas_detalle` con totales, método de pago y cliente opcional (`cliente_id`).
+
+- Compras
+  - `compras` y `compras_detalle` con estados.
+  - Trigger `compras_cxp_mov`: crea/actualiza CxP o registra egreso al cambiar estado.
+
+- Finanzas y CxP
+  - `movimientos_financieros` y `cuentas_por_pagar` con índices críticos.
+  - RPC: `get_finanzas_resumen` y `refresh_cxp_estado`.
+
+- Promociones
+  - Definición de promos por empresa, activas, con rango de fechas.
+
+- Invitaciones y empleados
+  - `create_empleado_invitation_ex` genera token con expiración y username opcional.
+  - `accept_empleado_invitation` vincula perfil, crea/actualiza empleado y rol.
+  - Email: función Edge `send-invitation` (opcional) con plantilla interna.
+  - Logging de correo: RPC `log_auth_email_event` registra envíos y errores de confirmación.
+
+- Auditoría
+  - Inserciones automáticas en acciones clave (asignación de roles, aceptación de invitación).
+
+## Políticas RLS (resumen)
+
+- Todas las tablas relevantes tienen RLS habilitado.
+- Las políticas usan `empresa_id = get_user_empresa_id(auth.uid())` y verifican permisos/roles.
+- `auditoria` permite inserciones sólo a `service_role`.
+
+## Integración con Supabase en el frontend
+
+- Cliente principal: `src/integrations/supabase/newClient.ts`.
+- Ejemplo de uso:
+
+```ts
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  import.meta.env.VITE_SUPABASE_URL!,
+  import.meta.env.VITE_SUPABASE_ANON_KEY!
+);
+
+export default supabase;
+```
+
+## Pruebas
+
+- Framework: `Vitest`.
+
+## Configuración de correo y solución de problemas
+
+- SMTP/Proveedor:
+  - Configura proveedor en Supabase → Authentication → Email. Si usas SMTP, define host, puerto, usuario y contraseña; si usas proveedor (p.ej. Resend), sigue la guía del proveedor.
+  - Habilita confirmación de correo y restablecimiento de contraseña.
+- URLs de redirección:
+  - Añade `http://localhost:8080` en Authentication → URL Configuration → Additional Redirect URLs.
+  - Verifica `VITE_PUBLIC_SITE_URL` en `.env` para que `emailRedirectTo` apunte correctamente.
+- Reenvío y colas:
+  - La app reintenta `auth.resend` con backoff exponencial (`src/services/email.ts`).
+  - Se registra cada intento/resultado vía RPC `log_auth_email_event` en `auditoria` (best‑effort). Revisa entradas con acción `auth_email`.
+- Errores comunes y mensajes:
+  - Dominio de redirección no permitido → añade URL de desarrollo/producción en Supabase.
+  - SMTP no configurado o sin permisos → revisa credenciales y proveedor.
+  - Edge no disponible durante registro → la app cae en `signUp` estándar y muestra estado de confirmación pendiente.
+
+### Verificación
+- Inicia `npm run dev` y abre `http://localhost:8080/auth`.
+- Registra con un correo nuevo; si queda pendiente, usa “Reenviar confirmación”.
+- Verifica en Supabase → Table Editor → `auditoria` los eventos `auth_email`.
+- En producción, valida que el proveedor de correo no esté bloqueando el dominio o la IP.
+- Configuración: `src/test/setup.ts` (jsdom / utilidades).
+- Ejecutar pruebas:
+
+```
+npx vitest
+```
+
+## Scripts útiles
+
+- `scripts/backup_before_migration.ps1`: respaldo previo a migraciones.
+- `scripts/seed_finanzas_data.mjs`: ejemplo de seed de datos financieros.
+
+## Estructura de proyecto (resumen)
+
+- `src/pages`: vistas principales (Dashboard, Auth, Clientes, Proveedores, Inventario, Ventas, Finanzas, Configuración, Alertas).
+- `src/components`: UI y componentes por módulo.
+- `src/services`: servicios (usuarios, invitaciones).
+- `src/services`: servicios (usuarios, correo).
+- `src/hooks`: hooks (perfil de usuario, permisos, etc.).
+- `supabase/migrations`: scripts SQL de esquema.
+- `supabase/functions`: funciones Edge (p.ej. `admin-create-user`, `send-invitation`).
+
+## Despliegue
+
+- Construcción: `npm run build`.
+- Sirve `dist/` en tu hosting estático preferido y configura variables `VITE_...` en el entorno del servidor.
+- Para funciones Edge, usa Supabase CLI o dashboard para desplegar y configurar `SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY`.
+
+## Solución de problemas
+
+- `ERR_NAME_NOT_RESOLVED` al iniciar: revisa `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY` en `.env`.
+- Error 42601 al crear `app_role`: ya corregido con bloque `DO $$ ... $$` en la migración.
+- Denegación por RLS: verifica que el usuario esté vinculado a una `empresa` en `profiles` y tenga roles/permissions adecuados.
+
+### Pantalla no visible / "Service is unavailable"
+
+- Causa probable: fallas de inicialización de Auth de Supabase (variables faltantes o servicio temporalmente indisponible) provocaban errores no capturados.
+- Corrección aplicada:
+  - Se añadió un `ErrorBoundary` global (`src/components/system/ErrorBoundary.tsx`) que muestra un fallback amigable y evita que la app se rompa con overlays opacos.
+  - Se robusteció `ProtectedRoute` para capturar errores de `supabase.auth.getSession()` y degradar a navegación hacia `/auth`.
+- Verificación:
+  - Ejecuta `npm run dev` y accede a `http://localhost:8080/`.
+  - Si Supabase está inaccesible, la app seguirá mostrando UI (Auth o fallback) en lugar de quedar en negro.
+  - Revisa `.env`: deben existir `VITE_NEW_SUPABASE_URL` y `VITE_NEW_SUPABASE_PUBLISHABLE_KEY` válidos para el proyecto activo.
+
+- Persistencia del onboarding tras crear empresa: tras el bootstrap puede existir latencia de propagación. Se corrigió `awaitEmpresaId` en `useUserProfile` para usar el `empresaId` retornado por `fetchProfile` y aumentar tolerancia a la latencia. Además, tanto Onboarding como Configuración navegan a `/` con `state: { hydratingEmpresa: true, postCreate: true }` usando un `Promise.race` entre confirmación primaria y timeout (3.5s). `AppLayout` muestra un overlay de hidratación no bloqueante y limpia automáticamente `hydratingEmpresa` y `postCreate` una vez disponible el `empresaId`. Si la interfaz sigue mostrando onboarding, refresca y/o verifica que la función Edge tenga `SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY` correctos.
+
+## Notas
+
+- Evita almacenar claves sensibles (`SERVICE_ROLE_KEY`) en el frontend.
+- La lógica de UPSERT en CxP usa `ON CONFLICT (compra_id)`: si deseas múltiples CxP por compra, ajusta esa condición y la restricción única.

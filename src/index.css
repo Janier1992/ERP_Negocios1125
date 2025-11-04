@@ -1,0 +1,161 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  html {
+    /* Tipografía fluida: escala entre 14px y 16px según viewport */
+    font-size: clamp(14px, 1.1vw, 16px);
+  }
+
+  :root {
+    /* Core backgrounds */
+    --background: 220 17% 97%;
+    --foreground: 222 47% 11%;
+
+    /* Cards and surfaces */
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+
+    /* Popovers */
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    /* Primary - Professional Blue */
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 100%;
+    --primary-hover: 217 91% 50%;
+
+    /* Success - Green for positive metrics */
+    --success: 142 71% 45%;
+    --success-foreground: 0 0% 100%;
+    --success-light: 142 71% 95%;
+
+    /* Warning - Orange for alerts */
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+    --warning-light: 38 92% 95%;
+
+    /* Secondary */
+    --secondary: 220 14% 96%;
+    --secondary-foreground: 222 47% 11%;
+
+    /* Muted */
+    --muted: 220 13% 95%;
+    --muted-foreground: 215 16% 47%;
+
+    /* Accent */
+    --accent: 217 91% 95%;
+    --accent-foreground: 217 91% 60%;
+
+    /* Destructive */
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Borders and inputs */
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 217 91% 60%;
+
+    /* Radius */
+    --radius: 0.5rem;
+
+    /* Sidebar */
+    --sidebar-background: 222 47% 11%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-primary: 217 91% 60%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 217 32% 17%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 217 32% 17%;
+    --sidebar-ring: 217 91% 60%;
+
+    /* Shadows */
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    
+    /* Transitions */
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .dark {
+    --background: 222 47% 11%;
+    --foreground: 210 40% 98%;
+
+    --card: 217 33% 17%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 217 33% 17%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 100%;
+    --primary-hover: 217 91% 70%;
+
+    --success: 142 71% 45%;
+    --success-foreground: 0 0% 100%;
+    --success-light: 142 71% 20%;
+
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+    --warning-light: 38 92% 20%;
+
+    --secondary: 217 33% 17%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217 33% 17%;
+    --muted-foreground: 215 20% 65%;
+
+    --accent: 217 33% 17%;
+    --accent-foreground: 217 91% 60%;
+
+    --destructive: 0 63% 31%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217 33% 17%;
+    --input: 217 33% 17%;
+    --ring: 217 91% 60%;
+
+    --sidebar-background: 222 47% 11%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-primary: 217 91% 60%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 217 33% 17%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 217 33% 17%;
+    --sidebar-ring: 217 91% 60%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+
+  img, svg, video, canvas { 
+    max-width: 100%;
+    height: auto; 
+  }
+}
+
+@layer components {
+  /* Contenedor principal responsivo para páginas */
+  .app-container {
+    @apply w-full max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+
+  /* Secciones con espaciado vertical coherente */
+  .page-section {
+    @apply w-full py-4 sm:py-6;
+  }
+}

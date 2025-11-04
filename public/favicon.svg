@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <!-- Minimal bar chart with upward trend line, black and transparent background -->
+  <rect x="6" y="38" width="8" height="20" rx="2" fill="#111111"/>
+  <rect x="20" y="30" width="8" height="28" rx="2" fill="#111111"/>
+  <rect x="34" y="22" width="8" height="36" rx="2" fill="#111111"/>
+  <rect x="48" y="12" width="8" height="46" rx="2" fill="#111111"/>
+
+  <polyline points="10,38 24,30 38,22 52,12" fill="none" stroke="#111111" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="10" cy="38" r="3" fill="#111111"/>
+  <circle cx="24" cy="30" r="3" fill="#111111"/>
+  <circle cx="38" cy="22" r="3" fill="#111111"/>
+  <circle cx="52" cy="12" r="3" fill="#111111"/>
+</svg>
