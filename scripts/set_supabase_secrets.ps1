@@ -4,6 +4,8 @@
 param(
   [string]$SupabaseUrl,
   [string]$ServiceRoleKey,
+  [string]$ResendApiKey,
+  [string]$MailFrom,
   [string]$Env = "prod"
 )
 
@@ -27,13 +29,13 @@ if (-not $projectRef) {
 }
 
 # Intentar leer secretos desde .env.secrets si no se pasan por parámetro
-if (-not $SupabaseUrl -or -not $ServiceRoleKey) {
-  if (Test-Path ".env.secrets") {
-    $lines = Get-Content ".env.secrets"
-    foreach ($line in $lines) {
-      if ($line -match '^SUPABASE_URL=(.+)$') { $SupabaseUrl = $Matches[1].Trim() }
-      if ($line -match '^SUPABASE_SERVICE_ROLE_KEY=(.+)$') { $ServiceRoleKey = $Matches[1].Trim() }
-    }
+if (Test-Path ".env.secrets") {
+  $lines = Get-Content ".env.secrets"
+  foreach ($line in $lines) {
+    if (-not $SupabaseUrl -and ($line -match '^SUPABASE_URL=(.+)$')) { $SupabaseUrl = $Matches[1].Trim() }
+    if (-not $ServiceRoleKey -and ($line -match '^SUPABASE_SERVICE_ROLE_KEY=(.+)$')) { $ServiceRoleKey = $Matches[1].Trim() }
+    if (-not $ResendApiKey -and ($line -match '^RESEND_API_KEY=(.+)$')) { $ResendApiKey = $Matches[1].Trim() }
+    if (-not $MailFrom -and ($line -match '^MAIL_FROM=(.+)$')) { $MailFrom = $Matches[1].Trim() }
   }
 }
 
@@ -45,8 +47,16 @@ if (-not $ServiceRoleKey) {
   $ServiceRoleKey = Read-Host "Ingresa SUPABASE_SERVICE_ROLE_KEY" -AsSecureString | ForEach-Object { [System.Net.NetworkCredential]::new("", $_).Password }
 }
 
+# Preguntar por secretos de correo si faltan
+if (-not $ResendApiKey) {
+  $ResendApiKey = Read-Host "Ingresa RESEND_API_KEY (si usarás Resend)"
+}
+if (-not $MailFrom) {
+  $MailFrom = Read-Host "Ingresa MAIL_FROM (ej. no-reply@minogocioerp.com)"
+}
+
 if (-not $SupabaseUrl -or -not $ServiceRoleKey) {
-  Write-Host "❌ Faltan valores de secretos" -ForegroundColor Red
+  Write-Host "❌ Faltan valores de secretos básicos (SUPABASE_URL / SERVICE_ROLE_KEY)" -ForegroundColor Red
   exit 1
 }
 
@@ -58,6 +68,16 @@ supabase secrets list --project-ref $projectRef --env $Env | Out-Host
 
 Write-Host "🔧 Estableciendo secretos SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY..." -ForegroundColor Yellow
 supabase secrets set SUPABASE_URL=$SupabaseUrl SUPABASE_SERVICE_ROLE_KEY=$ServiceRoleKey --project-ref $projectRef --env $Env
+
+# Establecer secretos de correo si existen
+if ($ResendApiKey) {
+  Write-Host "🔧 Estableciendo secreto RESEND_API_KEY..." -ForegroundColor Yellow
+  supabase secrets set RESEND_API_KEY=$ResendApiKey --project-ref $projectRef --env $Env
+}
+if ($MailFrom) {
+  Write-Host "🔧 Estableciendo secreto MAIL_FROM..." -ForegroundColor Yellow
+  supabase secrets set MAIL_FROM=$MailFrom --project-ref $projectRef --env $Env
+}
 
 if ($LASTEXITCODE -ne 0) {
   Write-Host "❌ Error al establecer secretos" -ForegroundColor Red

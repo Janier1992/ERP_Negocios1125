@@ -8,6 +8,8 @@ import { Plus, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/newClient";
 import { toast } from "sonner";
 import { useUserProfile } from "@/hooks/useUserProfile";
+import { validateEmail } from "@/services/users";
+import { sendSaleConfirmationWithRetry } from "@/services/salesEmail";
 
 interface VentaDialogProps {
   onVentaAdded: () => void;
@@ -25,6 +27,8 @@ export const VentaDialog = ({ onVentaAdded }: VentaDialogProps) => {
   const [loading, setLoading] = useState(false);
   const [productos, setProductos] = useState<Array<{ id: string; nombre: string; precio: number; stock: number }>>([]);
   const [cliente, setCliente] = useState("");
+  const [clienteEmail, setClienteEmail] = useState("");
+  const [clienteDireccion, setClienteDireccion] = useState("");
   const [metodoPago, setMetodoPago] = useState("");
   const [items, setItems] = useState<ProductoVenta[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -94,6 +98,22 @@ export const VentaDialog = ({ onVentaAdded }: VentaDialogProps) => {
     const newErrors: Record<string, string> = {};
     if (!metodoPago) newErrors.metodo_pago = "Seleccione un método de pago";
 
+    // Email obligatorio con formato
+    const emailTrim = clienteEmail.trim();
+    if (!emailTrim) {
+      newErrors.cliente_email = "Correo del cliente es obligatorio";
+    } else if (!validateEmail(emailTrim)) {
+      newErrors.cliente_email = "Formato de correo inválido";
+    }
+
+    // Dirección obligatoria con longitud mínima
+    const dirTrim = clienteDireccion.trim();
+    if (!dirTrim) {
+      newErrors.cliente_direccion = "Dirección del cliente es obligatoria";
+    } else if (dirTrim.length < 8) {
+      newErrors.cliente_direccion = "Dirección demasiado corta (mínimo 8 caracteres)";
+    }
+
     // Validar cada item
     for (const item of items) {
       if (!item.producto_id) newErrors.items = "Seleccione producto en cada línea";
@@ -135,6 +155,8 @@ export const VentaDialog = ({ onVentaAdded }: VentaDialogProps) => {
           user_id: user.id,
           empresa_id: empresaId,
           cliente: cliente || null,
+          cliente_email: emailTrim,
+          cliente_direccion: dirTrim,
           metodo_pago: metodoPago,
           total: getTotal(),
         })
@@ -209,8 +231,41 @@ export const VentaDialog = ({ onVentaAdded }: VentaDialogProps) => {
         console.warn("[Clientes] No se pudo upsert el cliente tras venta", clErr);
       }
 
+      // Envío de confirmación por correo con reintentos (no bloquea venta)
+      try {
+        const itemsResumen = items.map(i => {
+          const p = productos.find(pp => pp.id === i.producto_id);
+          return { nombre: p?.nombre || i.producto_id, cantidad: i.cantidad, precio: i.precio_unitario };
+        });
+        const res = await sendSaleConfirmationWithRetry({
+          to: emailTrim,
+          clienteNombre: (cliente || "Cliente"),
+          direccion: dirTrim,
+          ventaId: venta.id,
+          empresaId,
+          total: getTotal(),
+          metodoPago,
+          items: itemsResumen,
+        }, 3, 600);
+        if (res.ok) {
+          try {
+            await supabase
+              .from("ventas")
+              .update({ confirmacion_enviada_at: new Date().toISOString() })
+              .eq("id", venta.id);
+          } catch {}
+        } else {
+          toast.warning("Venta registrada; fallo al enviar confirmación: " + (res.error || ""));
+        }
+      } catch (mailErr: any) {
+        console.warn("[Venta] Error al enviar confirmación", mailErr);
+        toast.warning("Venta registrada; error de envío de confirmación");
+      }
+
       toast.success("Venta registrada exitosamente");
       setCliente("");
+      setClienteEmail("");
+      setClienteDireccion("");
       setMetodoPago("");
       setItems([]);
       setErrors({});
@@ -259,6 +314,32 @@ export const VentaDialog = ({ onVentaAdded }: VentaDialogProps) => {
                 </SelectContent>
               </Select>
               {errors.metodo_pago && <p className="text-sm text-destructive mt-1">{errors.metodo_pago}</p>}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="cliente_email">Correo del Cliente</Label>
+              <Input
+                id="cliente_email"
+                type="email"
+                value={clienteEmail}
+                onChange={(e) => setClienteEmail(e.target.value)}
+                placeholder="cliente@correo.com"
+                required
+              />
+              {errors.cliente_email && <p className="text-sm text-destructive mt-1">{errors.cliente_email}</p>}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="cliente_direccion">Dirección completa</Label>
+              <Input
+                id="cliente_direccion"
+                value={clienteDireccion}
+                onChange={(e) => setClienteDireccion(e.target.value)}
+                placeholder="Calle, número, ciudad, país"
+                required
+              />
+              {errors.cliente_direccion && <p className="text-sm text-destructive mt-1">{errors.cliente_direccion}</p>}
             </div>
           </div>
 

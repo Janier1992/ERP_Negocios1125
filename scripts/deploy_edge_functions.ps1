@@ -44,6 +44,14 @@ if (-not ($secretsList -match 'SUPABASE_SERVICE_ROLE_KEY') -or -not ($secretsLis
     Write-Host "Ejecuta: pwsh .\\scripts\\set_supabase_secrets.ps1" -ForegroundColor Yellow
 }
 
+# Verificar secretos de proveedor de correo (Resend)
+if (-not ($secretsList -match 'RESEND_API_KEY')) {
+    Write-Host "⚠️  Falta secreto RESEND_API_KEY (requerido para send-sale-confirmation)." -ForegroundColor Yellow
+}
+if (-not ($secretsList -match 'MAIL_FROM')) {
+    Write-Host "⚠️  Falta secreto MAIL_FROM (remitente de correos)." -ForegroundColor Yellow
+}
+
 # Desplegar todas las funciones
 Write-Host "`n🔄 Desplegando funciones..." -ForegroundColor Yellow
 
@@ -59,6 +67,10 @@ try {
     # Desplegar send-invitation
     Write-Host "Desplegando send-invitation..." -ForegroundColor Cyan
     supabase functions deploy send-invitation
+
+    # Desplegar send-sale-confirmation
+    Write-Host "Desplegando send-sale-confirmation..." -ForegroundColor Cyan
+    supabase functions deploy send-sale-confirmation
     
     Write-Host "`n✅ Todas las funciones desplegadas exitosamente!" -ForegroundColor Green
     

@@ -291,7 +291,10 @@ export type Database = {
       ventas: {
         Row: {
           cliente: string | null
+          cliente_direccion: string
+          cliente_email: string
           created_at: string
+          confirmacion_enviada_at: string | null
           empresa_id: string | null
           id: string
           metodo_pago: string
@@ -300,7 +303,10 @@ export type Database = {
         }
         Insert: {
           cliente?: string | null
+          cliente_direccion: string
+          cliente_email: string
           created_at?: string
+          confirmacion_enviada_at?: string | null
           empresa_id?: string | null
           id?: string
           metodo_pago: string
@@ -309,7 +315,10 @@ export type Database = {
         }
         Update: {
           cliente?: string | null
+          cliente_direccion?: string
+          cliente_email?: string
           created_at?: string
+          confirmacion_enviada_at?: string | null
           empresa_id?: string | null
           id?: string
           metodo_pago?: string

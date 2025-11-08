@@ -36,6 +36,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { validateEmail } from "@/services/users";
 
 const Ventas = () => {
   const { empresaId, loading: profileLoading } = useUserProfile();
@@ -47,6 +48,8 @@ const Ventas = () => {
   const [editLoading, setEditLoading] = useState(false);
   const [editProductos, setEditProductos] = useState<Array<{ id: string; nombre: string; precio: number; stock: number }>>([]);
   const [editCliente, setEditCliente] = useState("");
+  const [editClienteEmail, setEditClienteEmail] = useState("");
+  const [editClienteDireccion, setEditClienteDireccion] = useState("");
   const [editMetodoPago, setEditMetodoPago] = useState("");
   const [editItems, setEditItems] = useState<Array<{ id: string; producto_id: string; cantidad: number; precio_unitario: number }>>([]);
   const [editOriginalItems, setEditOriginalItems] = useState<Array<{ id: string; producto_id: string; cantidad: number; precio_unitario: number }>>([]);
@@ -98,6 +101,8 @@ const Ventas = () => {
 
     if (editingVenta) {
       setEditCliente(editingVenta.cliente || "");
+      setEditClienteEmail(editingVenta.cliente_email || "");
+      setEditClienteDireccion(editingVenta.cliente_direccion || "");
       setEditMetodoPago(editingVenta.metodo_pago || "");
       setEditOpen(true);
       fetchEditProductos();
@@ -114,7 +119,7 @@ const Ventas = () => {
     try {
       const { data, error } = await supabase
         .from("ventas")
-        .select("*, ventas_detalle(cantidad)")
+        .select("id, created_at, cliente, cliente_email, cliente_direccion, total, metodo_pago, ventas_detalle(cantidad)")
         .eq("empresa_id", empresaId)
         .order("created_at", { ascending: false })
         .limit(50);
@@ -220,6 +225,18 @@ const Ventas = () => {
   const validarEdit = () => {
     const newErrors: Record<string, string> = {};
     if (!editMetodoPago) newErrors.metodo_pago = "Selecciona método de pago";
+    const emailTrim = (editClienteEmail || "").trim();
+    if (!emailTrim) {
+      newErrors.cliente_email = "Correo del cliente es obligatorio";
+    } else if (!validateEmail(emailTrim)) {
+      newErrors.cliente_email = "Formato de correo inválido";
+    }
+    const dirTrim = (editClienteDireccion || "").trim();
+    if (!dirTrim) {
+      newErrors.cliente_direccion = "Dirección del cliente es obligatoria";
+    } else if (dirTrim.length < 8) {
+      newErrors.cliente_direccion = "Dirección demasiado corta (mínimo 8 caracteres)";
+    }
     if (editItems.length === 0) newErrors.items = "La venta debe tener al menos un producto";
     for (const it of editItems) {
       if (!it.producto_id) { newErrors.items = "Selecciona producto en todos los ítems"; break; }
@@ -258,6 +275,8 @@ const Ventas = () => {
     setEditOriginalItems([]);
     setEditingVenta(null);
     setEditConfirmOpen(false);
+    setEditClienteEmail("");
+    setEditClienteDireccion("");
   };
 
   const handleEditSubmit = (e: React.FormEvent) => {
@@ -273,7 +292,7 @@ const Ventas = () => {
       const total = getEditTotal();
       const { error: ventaError } = await supabase
         .from("ventas")
-        .update({ cliente: editCliente || null, metodo_pago: editMetodoPago, total })
+        .update({ cliente: editCliente || null, cliente_email: (editClienteEmail || "").trim(), cliente_direccion: (editClienteDireccion || "").trim(), metodo_pago: editMetodoPago, total })
         .eq("id", editingVenta.id);
       if (ventaError) throw ventaError;
 
@@ -394,6 +413,8 @@ const Ventas = () => {
               <TableRow>
                 <TableHead>Fecha y Hora</TableHead>
                 <TableHead>Cliente</TableHead>
+                <TableHead>Correo</TableHead>
+                <TableHead>Dirección</TableHead>
                 <TableHead className="text-right">Productos</TableHead>
                 <TableHead className="text-right">Total</TableHead>
                 <TableHead>Método de Pago</TableHead>
@@ -403,7 +424,7 @@ const Ventas = () => {
             <TableBody>
               {ventas.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
                     No hay ventas registradas
                   </TableCell>
                 </TableRow>
@@ -419,6 +440,8 @@ const Ventas = () => {
                         {format(new Date(venta.created_at), "dd/MM/yyyy HH:mm")}
                       </TableCell>
                       <TableCell className="font-medium">{venta.cliente || "Cliente General"}</TableCell>
+                      <TableCell className="text-muted-foreground max-w-[240px] truncate">{(venta.cliente_email || "-")}</TableCell>
+                      <TableCell className="text-muted-foreground max-w-[280px] truncate">{(venta.cliente_direccion || "-")}</TableCell>
                       <TableCell className="text-right text-muted-foreground">{totalProductos}</TableCell>
                       <TableCell className="text-right font-semibold text-success">
                         ${Number(venta.total).toFixed(2)}
@@ -484,6 +507,32 @@ const Ventas = () => {
                   </SelectContent>
                 </Select>
                 {editErrors.metodo_pago && <p className="text-sm text-destructive mt-1">{editErrors.metodo_pago}</p>}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="cliente_email">Correo del Cliente</Label>
+                <Input
+                  id="cliente_email"
+                  type="email"
+                  value={editClienteEmail}
+                  onChange={(e) => setEditClienteEmail(e.target.value)}
+                  placeholder="cliente@correo.com"
+                  required
+                />
+                {editErrors.cliente_email && <p className="text-sm text-destructive mt-1">{editErrors.cliente_email}</p>}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="cliente_direccion">Dirección completa</Label>
+                <Input
+                  id="cliente_direccion"
+                  value={editClienteDireccion}
+                  onChange={(e) => setEditClienteDireccion(e.target.value)}
+                  placeholder="Calle, número, ciudad, país"
+                  required
+                />
+                {editErrors.cliente_direccion && <p className="text-sm text-destructive mt-1">{editErrors.cliente_direccion}</p>}
               </div>
             </div>
 

@@ -18,8 +18,8 @@ export default function Finanzas() {
   const [netTrend, setNetTrend] = useState<Array<{ label: string; total: number }>>([]);
   // Hooks de CxP colocados antes de los returns para respetar las Rules of Hooks
   const [cxpLoading, setCxpLoading] = useState(false);
-  const [cxp, setCxp] = useState<Array<{ id: string; proveedor_id?: string | null; compra_id?: string | null; monto: number; fecha_emision: string; fecha_vencimiento: string; estado: 'pendiente'|'pagado'|'vencido' }>>([]);
-  const [cxpEstado, setCxpEstado] = useState<'todas'|'pendiente'|'vencido'|'pagado'>('pendiente');
+  const [cxp, setCxp] = useState<Array<{ id: string; proveedor_id?: string | null; compra_id?: string | null; monto: number; fecha_emision: string; fecha_vencimiento: string; estado: 'pendiente'|'pagado'|'vencida' }>>([]);
+  const [cxpEstado, setCxpEstado] = useState<'todas'|'pendiente'|'vencida'|'pagado'>('pendiente');
   useEffect(() => {
     if (!empresaId) return;
     const fetchCxp = async () => {
@@ -90,7 +90,7 @@ export default function Finanzas() {
         // EGRESOS: compras recibidas en el periodo
         const comprasRecRes = await supabase
           .from('compras')
-          .select('id, estado, created_at')
+          .select('id, estado, total, created_at')
           .eq('empresa_id', empresaId)
           .gte('created_at', desde)
           .eq('estado', 'recibida');
@@ -106,25 +106,8 @@ export default function Finanzas() {
           comprasRecRows = comprasRecRes.data || [];
         }
 
-        let egresos = 0;
-        for (const c of comprasRecRows) {
-          const detRes = await supabase
-            .from('compras_detalle')
-            .select('cantidad, precio')
-            .eq('compra_id', c.id);
-          let detRows: any[] = [];
-          if (detRes.error) {
-            const code = (detRes.error as any)?.code || '';
-            if (code === 'PGRST205') {
-              detRows = [];
-            } else {
-              throw detRes.error;
-            }
-          } else {
-            detRows = detRes.data || [];
-          }
-          egresos += detRows.reduce((s: number, d: any) => s + Number(d.cantidad || 0) * Number(d.precio || 0), 0);
-        }
+        // Egresos: usar el campo total de la compra (recibida)
+        const egresos = comprasRecRows.reduce((sum: number, c: any) => sum + Number(c.total || 0), 0);
 
         // CxP monto total actual (independiente del periodo)
         const cxpMontoRes = await supabase
@@ -154,13 +137,8 @@ export default function Finanzas() {
         }
         for (const c of comprasRecRows) {
           const label = format(new Date(c.created_at), period === 'hoy' ? 'HH:mm' : 'dd MMM');
-          const detRes = await supabase
-            .from('compras_detalle')
-            .select('cantidad, precio')
-            .eq('compra_id', c.id);
-          const monto = (detRes.data || []).reduce((s: number, d: any) => s + Number(d.cantidad || 0) * Number(d.precio || 0), 0);
           const cur = dailyMap.get(label) || { ingresos: 0, egresos: 0 };
-          cur.egresos += monto;
+          cur.egresos += Number(c.total || 0);
           dailyMap.set(label, cur);
         }
         const trend = Array.from(dailyMap.entries()).map(([label, v]) => ({ label, total: v.ingresos - v.egresos }));
@@ -265,8 +243,8 @@ export default function Finanzas() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card>
           <CardHeader>
-            <CardTitle>Ingresos (Mes)</CardTitle>
-            <CardDescription>Ventas del mes</CardDescription>
+            <CardTitle>Ingresos ({period === 'hoy' ? 'Hoy' : period === 'semana' ? 'Semana' : 'Mes'})</CardTitle>
+            <CardDescription>Ventas del periodo seleccionado</CardDescription>
           </CardHeader>
           <CardContent>
             <p className="text-3xl font-bold">{currencyFormatter.format(Number(resumen?.ingresos_mes || 0))}</p>
@@ -274,8 +252,8 @@ export default function Finanzas() {
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle>Egresos (Mes)</CardTitle>
-            <CardDescription>Compras recibidas</CardDescription>
+            <CardTitle>Egresos ({period === 'hoy' ? 'Hoy' : period === 'semana' ? 'Semana' : 'Mes'})</CardTitle>
+            <CardDescription>Compras recibidas del periodo</CardDescription>
           </CardHeader>
           <CardContent>
             <p className="text-3xl font-bold">{currencyFormatter.format(Number(resumen?.egresos_mes || 0))}</p>
@@ -283,8 +261,8 @@ export default function Finanzas() {
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle>Balance (Mes)</CardTitle>
-            <CardDescription>Ingresos - Egresos</CardDescription>
+            <CardTitle>Balance ({period === 'hoy' ? 'Hoy' : period === 'semana' ? 'Semana' : 'Mes'})</CardTitle>
+            <CardDescription>Ingresos - Egresos del periodo</CardDescription>
           </CardHeader>
           <CardContent>
             <p className="text-3xl font-bold">{currencyFormatter.format(Number(resumen?.balance_mes || 0))}</p>
@@ -341,7 +319,7 @@ export default function Finanzas() {
                 <SelectContent>
                   <SelectItem value="todas">Todas</SelectItem>
                   <SelectItem value="pendiente">Pendiente</SelectItem>
-                  <SelectItem value="vencido">Vencida</SelectItem>
+                  <SelectItem value="vencida">Vencida</SelectItem>
                   <SelectItem value="pagado">Pagada</SelectItem>
                 </SelectContent>
               </Select>
@@ -374,7 +352,7 @@ export default function Finanzas() {
                     <TableCell>${Number(x.monto || 0).toFixed(2)}</TableCell>
                     <TableCell>{new Date(x.fecha_vencimiento).toLocaleDateString()}</TableCell>
                     <TableCell>
-                      {x.estado === 'vencido' && <Badge variant="destructive">Vencida</Badge>}
+                      {x.estado === 'vencida' && <Badge variant="destructive">Vencida</Badge>}
                       {x.estado === 'pendiente' && <Badge variant="outline">Pendiente</Badge>}
                       {x.estado === 'pagado' && <Badge variant="secondary">Pagada</Badge>}
                     </TableCell>
