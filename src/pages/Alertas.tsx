@@ -14,8 +14,8 @@ interface Alerta {
   tipo: "stock_bajo" | "stock_critico" | string;
   titulo: string;
   mensaje: string;
-  producto_id: string | null;
-  leida: boolean;
+  producto_id?: string | null;
+  leida?: boolean;
   created_at: string;
 }
 
@@ -26,22 +26,56 @@ const Alertas = () => {
   const [search, setSearch] = useState("");
   const [estado, setEstado] = useState<"todas" | "activas" | "leidas">("todas");
   const [tipo, setTipo] = useState<"todos" | "stock_bajo" | "stock_critico">("todos");
+  const [supportsLeida, setSupportsLeida] = useState(true);
 
   const fetchAlertas = async () => {
     if (!empresaId) return;
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      // Intento con columnas completas (incluye producto_id y leida)
+      let { data, error } = await supabase
         .from("alertas")
         .select("id, tipo, titulo, mensaje, producto_id, leida, created_at")
         .eq("empresa_id", empresaId)
         .order("created_at", { ascending: false });
-
-      if (error) throw error;
-      setAlertas((data || []) as Alerta[]);
+      if (error) {
+        const code = (error as any)?.code || "";
+        const msg = String((error as any)?.message || "").toLowerCase();
+        // Manejo amable para cache de esquema desactualizado (mismo patrón que Dashboard)
+        if (code === "PGRST205" || msg.includes("schema cache")) {
+          console.warn("[Alertas] Esquema no sincronizado. Mostrando lista vacía por ahora.");
+          setAlertas([]);
+        } else if (msg.includes("column") && (msg.includes("leida") || msg.includes("producto_id"))) {
+          // Fallback: la instancia no tiene columnas leida/producto_id. Reintentamos con columnas básicas.
+          console.warn("[Alertas] Faltan columnas leida/producto_id en la tabla. Aplicando fallback.");
+          setSupportsLeida(false);
+          const retry = await supabase
+            .from("alertas")
+            .select("id, tipo, titulo, mensaje, created_at")
+            .eq("empresa_id", empresaId)
+            .order("created_at", { ascending: false });
+          if (retry.error) throw retry.error;
+          data = retry.data;
+          setAlertas((data || []) as Alerta[]);
+        } else {
+          throw error;
+        }
+      } else {
+        setSupportsLeida(true);
+        setAlertas((data || []) as Alerta[]);
+      }
     } catch (err: any) {
+      const low = String(err?.message || "").toLowerCase();
+      const isAbort = low.includes("abort") || /err_aborted/i.test(low);
+      const isNetwork = /failed to fetch|network/i.test(low);
+      if (isAbort) {
+        // Navegación abortada o cancelaciones internas: no mostrar error
+      } else if (isNetwork) {
+        toast.error("Sin conexión con el servidor. Reintenta en unos segundos…");
+      } else {
+        toast.error("Error al cargar alertas");
+      }
       console.error(err);
-      toast.error("Error al cargar alertas");
     } finally {
       setLoading(false);
     }
@@ -54,6 +88,10 @@ const Alertas = () => {
   }, [empresaId]);
 
   const marcarLeida = async (id: string) => {
+    if (!supportsLeida) {
+      toast.info("La marcación de lectura no está disponible en esta instancia.");
+      return;
+    }
     try {
       const { error } = await supabase
         .from("alertas")
@@ -69,6 +107,10 @@ const Alertas = () => {
   };
 
   const marcarTodasLeidas = async () => {
+    if (!supportsLeida) {
+      toast.info("La marcación de lectura no está disponible en esta instancia.");
+      return;
+    }
     try {
       const ids = filteredAlertas.map(a => a.id);
       if (ids.length === 0) return;
@@ -91,12 +133,13 @@ const Alertas = () => {
         search.trim().length === 0 ||
         a.titulo.toLowerCase().includes(search.toLowerCase()) ||
         a.mensaje.toLowerCase().includes(search.toLowerCase());
-      const matchEstado =
-        estado === "todas" || (estado === "activas" && !a.leida) || (estado === "leidas" && a.leida);
+      const matchEstado = supportsLeida
+        ? (estado === "todas" || (estado === "activas" && !a.leida) || (estado === "leidas" && !!a.leida))
+        : true; // si no hay soporte de "leida", ignoramos el filtro de estado
       const matchTipo = tipo === "todos" || a.tipo === tipo;
       return matchSearch && matchEstado && matchTipo;
     });
-  }, [alertas, search, estado, tipo]);
+  }, [alertas, search, estado, tipo, supportsLeida]);
 
   const getTipoBadge = (t: string) => {
     switch (t) {
@@ -133,10 +176,12 @@ const Alertas = () => {
             <Filter className="h-4 w-4" />
             Actualizar
           </Button>
+          {supportsLeida && (
           <Button onClick={marcarTodasLeidas} className="gap-2">
             <CheckCircle2 className="h-4 w-4" />
             Marcar todas como leídas
           </Button>
+          )}
         </div>
       </div>
 
@@ -160,13 +205,15 @@ const Alertas = () => {
               </Button>
               <Button
                 variant={estado === "activas" ? "default" : "outline"}
-                onClick={() => setEstado("activas")}
+                onClick={() => supportsLeida && setEstado("activas")}
+                disabled={!supportsLeida}
               >
                 Activas
               </Button>
               <Button
                 variant={estado === "leidas" ? "default" : "outline"}
-                onClick={() => setEstado("leidas")}
+                onClick={() => supportsLeida && setEstado("leidas")}
+                disabled={!supportsLeida}
               >
                 Leídas
               </Button>
@@ -208,13 +255,13 @@ const Alertas = () => {
                     <div className="flex items-center gap-2">
                       <p className="font-medium text-foreground">{a.titulo}</p>
                       {getTipoBadge(a.tipo)}
-                      {a.leida && <Badge variant="outline">Leída</Badge>}
+                      {supportsLeida && a.leida && <Badge variant="outline">Leída</Badge>}
                     </div>
                     <p className="text-sm text-muted-foreground mt-1">{a.mensaje}</p>
                     <p className="text-xs text-muted-foreground mt-1">{new Date(a.created_at).toLocaleString()}</p>
                   </div>
                   <div className="flex flex-col gap-2">
-                    {!a.leida && (
+                    {supportsLeida && !a.leida && (
                       <Button variant="outline" size="sm" onClick={() => marcarLeida(a.id)}>
                         Marcar como leída
                       </Button>

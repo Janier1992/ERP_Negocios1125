@@ -149,9 +149,25 @@ const supabase = createClient(
 export default supabase;
 ```
 
-## Pruebas
+## Pruebas (cómo reintroducirlas)
 
-- Framework: `Vitest`.
+- Si decides volver a habilitar pruebas:
+  - Instala dependencias de testing:
+    - `npm i -D vitest @testing-library/react @testing-library/jest-dom jsdom`
+  - Restaura `src/test/setup.ts` con configuración de `jsdom` y utilidades de Testing Library.
+  - Añade script `"test": "vitest"` en `package.json`.
+  - Opcional: configura `vite.config.ts` con `test.setupFiles = ["src/test/setup.ts"]` (ya contemplado).
+  - Organiza pruebas en `src/**/__tests__/`.
+
+## Revisión de dependencias
+
+- Para detectar paquetes no utilizados de forma periódica, usa:
+
+```
+npm run depcheck
+```
+
+- Revisa resultados y elimina dependencias que no se usen en el runtime.
 
 ## Configuración de correo y solución de problemas
 
@@ -183,8 +199,7 @@ npx vitest
 
 ## Scripts útiles
 
-- `scripts/backup_before_migration.ps1`: respaldo previo a migraciones.
-- `scripts/seed_finanzas_data.mjs`: ejemplo de seed de datos financieros.
+- `depcheck`: analiza dependencias no usadas (`npm run depcheck`).
 
 ## Estructura de proyecto (resumen)
 
