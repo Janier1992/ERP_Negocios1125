@@ -48,6 +48,19 @@ export const ExcelUploadDialog = ({ onUploadComplete, categorias, proveedores }:
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Validaciones básicas de seguridad
+    const MAX_SIZE_MB = 5;
+    const allowedTypes = ["application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"];
+    const isXlsx = file.name.toLowerCase().endsWith(".xlsx");
+    if (!allowedTypes.includes(file.type) && !isXlsx) {
+      toast.error("Tipo de archivo no permitido. Usa .xlsx");
+      return;
+    }
+    if (file.size > MAX_SIZE_MB * 1024 * 1024) {
+      toast.error(`Archivo demasiado grande (> ${MAX_SIZE_MB}MB)`);
+      return;
+    }
+
     try {
       const result = await uploadProductos(file, categorias, proveedores);
       toast.success(`${result.inserted} productos agregados, ${result.duplicates} duplicados omitidos`);

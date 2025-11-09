@@ -16,34 +16,49 @@ import Clientes from "./pages/Clientes";
 import Finanzas from "./pages/Finanzas";
 import InvitacionesAceptar from "./pages/InvitacionesAceptar";
 import { ErrorBoundary } from "@/components/system/ErrorBoundary";
+import { ThemeProvider } from "next-themes";
+import { NotificationsProvider } from "@/components/notifications/NotificationsProvider";
+import { useUserProfile } from "@/hooks/useUserProfile";
 
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
+const AppInner = () => {
+  // Obtener empresaId para el proveedor de notificaciones
+  const { empresaId } = useUserProfile();
+  return (
     <TooltipProvider>
       <ErrorBoundary>
         <Sonner />
-        <BrowserRouter basename={import.meta.env.BASE_URL}>
-          <Routes>
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/invitaciones/aceptar" element={<InvitacionesAceptar />} />
-            <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/inventario" element={<Inventario />} />
-              <Route path="/ventas" element={<Ventas />} />
-              <Route path="/alertas" element={<Alertas />} />
-              <Route path="/proveedores" element={<Proveedores />} />
-              <Route path="/clientes" element={<Clientes />} />
-              <Route path="/finanzas" element={<Finanzas />} />
-              <Route path="/configuracion" element={<Configuracion />} />
-            </Route>
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
+        <NotificationsProvider empresaId={empresaId}>
+          <BrowserRouter basename={import.meta.env.BASE_URL}>
+            <Routes>
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/invitaciones/aceptar" element={<InvitacionesAceptar />} />
+              <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
+                <Route path="/" element={<Dashboard />} />
+                <Route path="/inventario" element={<Inventario />} />
+                <Route path="/ventas" element={<Ventas />} />
+                <Route path="/alertas" element={<Alertas />} />
+                <Route path="/proveedores" element={<Proveedores />} />
+                <Route path="/clientes" element={<Clientes />} />
+                <Route path="/finanzas" element={<Finanzas />} />
+                <Route path="/configuracion" element={<Configuracion />} />
+              </Route>
+              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </NotificationsProvider>
       </ErrorBoundary>
     </TooltipProvider>
+  );
+};
+
+const App = () => (
+  <QueryClientProvider client={queryClient}>
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+      <AppInner />
+    </ThemeProvider>
   </QueryClientProvider>
 );
 

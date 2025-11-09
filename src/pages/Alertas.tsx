@@ -8,16 +8,10 @@ import { AlertTriangle, CheckCircle2, Filter } from "lucide-react";
 import { supabase } from "@/integrations/supabase/newClient";
 import { useUserProfile } from "@/hooks/useUserProfile";
 import { toast } from "sonner";
+import { useSearchParams } from "react-router-dom";
+import { fetchAlerts, subscribeAlerts, markAlertRead, AlertRow } from "@/services/alerts";
 
-interface Alerta {
-  id: string;
-  tipo: "stock_bajo" | "stock_critico" | string;
-  titulo: string;
-  mensaje: string;
-  producto_id?: string | null;
-  leida?: boolean;
-  created_at: string;
-}
+type Alerta = AlertRow & { producto_id?: string | null };
 
 const Alertas = () => {
   const { empresaId, loading: profileLoading } = useUserProfile();
@@ -27,42 +21,39 @@ const Alertas = () => {
   const [estado, setEstado] = useState<"todas" | "activas" | "leidas">("todas");
   const [tipo, setTipo] = useState<"todos" | "stock_bajo" | "stock_critico">("todos");
   const [supportsLeida, setSupportsLeida] = useState(true);
+  const [dateFrom, setDateFrom] = useState<string | null>(null);
+  const [dateTo, setDateTo] = useState<string | null>(null);
+  const [sortKey, setSortKey] = useState<"fecha" | "prioridad" | "tipo">("fecha");
+  const [sortAsc, setSortAsc] = useState<boolean>(false);
+  const [totalActivas, setTotalActivas] = useState<number>(0);
+  const [params] = useSearchParams();
 
   const fetchAlertas = async () => {
     if (!empresaId) return;
     setLoading(true);
     try {
-      // Intento con columnas completas (incluye producto_id y leida)
-      let { data, error } = await supabase
-        .from("alertas")
-        .select("id, tipo, titulo, mensaje, producto_id, leida, created_at")
-        .eq("empresa_id", empresaId)
-        .order("created_at", { ascending: false });
-      if (error) {
-        const code = (error as any)?.code || "";
-        const msg = String((error as any)?.message || "").toLowerCase();
-        // Manejo amable para cache de esquema desactualizado (mismo patrón que Dashboard)
-        if (code === "PGRST205" || msg.includes("schema cache")) {
-          console.warn("[Alertas] Esquema no sincronizado. Mostrando lista vacía por ahora.");
-          setAlertas([]);
-        } else if (msg.includes("column") && (msg.includes("leida") || msg.includes("producto_id"))) {
-          // Fallback: la instancia no tiene columnas leida/producto_id. Reintentamos con columnas básicas.
-          console.warn("[Alertas] Faltan columnas leida/producto_id en la tabla. Aplicando fallback.");
+      const desde = dateFrom ? new Date(dateFrom).toISOString() : undefined;
+      const hasta = dateTo ? new Date(dateTo).toISOString() : undefined;
+      const orderBy = sortKey === "fecha" ? "created_at" : sortKey === "tipo" ? "tipo" : "created_at";
+      try {
+        const data = await fetchAlerts({ empresaId, desde, hasta, orderBy, orderAsc: sortAsc });
+        setSupportsLeida(true);
+        setAlertas(data as Alerta[]);
+      } catch (error: any) {
+        const msg = String(error?.message || "").toLowerCase();
+        if (msg.includes("column") && msg.includes("leida")) {
+          console.warn("[Alertas] Faltan columnas leida en la instancia. Fallback a columnas básicas.");
           setSupportsLeida(false);
           const retry = await supabase
             .from("alertas")
             .select("id, tipo, titulo, mensaje, created_at")
             .eq("empresa_id", empresaId)
-            .order("created_at", { ascending: false });
+            .order("created_at", { ascending: sortAsc });
           if (retry.error) throw retry.error;
-          data = retry.data;
-          setAlertas((data || []) as Alerta[]);
+          setAlertas((retry.data || []) as Alerta[]);
         } else {
           throw error;
         }
-      } else {
-        setSupportsLeida(true);
-        setAlertas((data || []) as Alerta[]);
       }
     } catch (err: any) {
       const low = String(err?.message || "").toLowerCase();
@@ -82,9 +73,17 @@ const Alertas = () => {
   };
 
   useEffect(() => {
-    if (empresaId) {
-      fetchAlertas();
-    }
+    if (!empresaId) return;
+    // Inicializa filtros desde query params (sincronizado con Dashboard)
+    const qpDesde = params.get("desde");
+    const qpHasta = params.get("hasta");
+    if (qpDesde) setDateFrom(qpDesde);
+    if (qpHasta) setDateTo(qpHasta);
+    fetchAlertas();
+    const ch = subscribeAlerts(empresaId, () => fetchAlertas());
+    return () => {
+      supabase.removeChannel(ch);
+    };
   }, [empresaId]);
 
   const marcarLeida = async (id: string) => {
@@ -93,11 +92,7 @@ const Alertas = () => {
       return;
     }
     try {
-      const { error } = await supabase
-        .from("alertas")
-        .update({ leida: true })
-        .eq("id", id);
-      if (error) throw error;
+      await markAlertRead(id, true);
       setAlertas(prev => prev.map(a => (a.id === id ? { ...a, leida: true } : a)));
       toast.success("Alerta marcada como leída");
     } catch (err: any) {
@@ -128,7 +123,7 @@ const Alertas = () => {
   };
 
   const filteredAlertas = useMemo(() => {
-    return alertas.filter(a => {
+    const base = alertas.filter(a => {
       const matchSearch =
         search.trim().length === 0 ||
         a.titulo.toLowerCase().includes(search.toLowerCase()) ||
@@ -139,7 +134,25 @@ const Alertas = () => {
       const matchTipo = tipo === "todos" || a.tipo === tipo;
       return matchSearch && matchEstado && matchTipo;
     });
-  }, [alertas, search, estado, tipo, supportsLeida]);
+    const withSort = [...base];
+    if (sortKey === "prioridad") {
+      const priority = (t: string) => (t === "stock_critico" ? 3 : t === "stock_bajo" ? 2 : 1);
+      withSort.sort((a, b) => (sortAsc ? 1 : -1) * (priority(a.tipo) - priority(b.tipo)));
+    } else if (sortKey === "tipo") {
+      withSort.sort((a, b) => (sortAsc ? 1 : -1) * a.tipo.localeCompare(b.tipo));
+    } else {
+      withSort.sort((a, b) => {
+        const da = new Date(a.created_at).getTime();
+        const db = new Date(b.created_at).getTime();
+        return (sortAsc ? 1 : -1) * (da - db);
+      });
+    }
+    return withSort;
+  }, [alertas, search, estado, tipo, sortKey, sortAsc, supportsLeida]);
+
+  useEffect(() => {
+    setTotalActivas(alertas.filter(a => !a.leida).length);
+  }, [alertas]);
 
   const getTipoBadge = (t: string) => {
     switch (t) {
@@ -170,6 +183,7 @@ const Alertas = () => {
         <div>
           <h2 className="text-3xl font-bold text-foreground">Alertas</h2>
           <p className="text-muted-foreground mt-1">Gestión de alertas del sistema</p>
+          <div className="text-sm mt-1">Activas: <span className="font-semibold">{totalActivas}</span></div>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={fetchAlertas} className="gap-2">
@@ -188,7 +202,7 @@ const Alertas = () => {
       <Card>
         <CardHeader>
           <CardTitle>Listado de Alertas</CardTitle>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-4">
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-3 mt-4">
             <div className="relative">
               <Input
                 placeholder="Buscar por título o mensaje..."
@@ -237,6 +251,20 @@ const Alertas = () => {
               >
                 Stock Crítico
               </Button>
+            </div>
+            <div className="flex flex-col gap-2">
+              <div className="flex gap-2">
+                <Input type="date" value={dateFrom || ""} onChange={(e) => setDateFrom(e.target.value)} />
+                <Input type="date" value={dateTo || ""} onChange={(e) => setDateTo(e.target.value)} />
+                <Button variant="secondary" onClick={fetchAlertas}>Aplicar</Button>
+                <Button variant="ghost" onClick={() => { setDateFrom(null); setDateTo(null); fetchAlertas(); }}>Limpiar</Button>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button variant={sortKey === "fecha" ? "default" : "outline"} onClick={() => setSortKey("fecha")}>Fecha</Button>
+                <Button variant={sortKey === "prioridad" ? "default" : "outline"} onClick={() => setSortKey("prioridad")}>Prioridad</Button>
+                <Button variant={sortKey === "tipo" ? "default" : "outline"} onClick={() => setSortKey("tipo")}>Tipo</Button>
+                <Button variant="outline" onClick={() => setSortAsc((v) => !v)}>{sortAsc ? "Asc" : "Desc"}</Button>
+              </div>
             </div>
           </div>
         </CardHeader>

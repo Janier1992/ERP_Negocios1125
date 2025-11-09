@@ -90,13 +90,22 @@ export function DataTable<T extends Record<string, any>>({ columns, data, filena
     return arr;
   }, [filtered, columns, sortKey, sortDir]);
 
+  // Evita inyección de fórmulas en Excel/CSV según OWASP
+  const sanitizeForExcel = (val: any) => {
+    if (val == null) return "";
+    const s = String(val);
+    // Si comienza con caracteres de fórmula, prefija con comilla simple
+    return /^[=\-\+@]/.test(s) ? `'${s}` : s;
+  };
+
   const exportXLSX = () => {
     const rows = sorted.map((row) => {
       const r: Record<string, any> = {};
       columns.forEach((c) => {
         const val = c.accessor ? c.accessor(row) : (row as any)[c.key];
-        // Strip JSX and convert badges to text if needed
-        r[c.header] = typeof val === "string" || typeof val === "number" ? val : String(val ?? "");
+        // Normaliza a texto plano y sanitiza fórmulas
+        const plain = typeof val === "string" || typeof val === "number" ? val : String(val ?? "");
+        r[c.header] = sanitizeForExcel(plain);
       });
       return r;
     });
@@ -108,7 +117,7 @@ export function DataTable<T extends Record<string, any>>({ columns, data, filena
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div className="relative w-full max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -118,7 +127,7 @@ export function DataTable<T extends Record<string, any>>({ columns, data, filena
             onChange={(e) => setGlobalQuery(e.target.value)}
           />
         </div>
-        <Button variant="outline" onClick={exportXLSX} className="gap-2">
+        <Button variant="outline" onClick={exportXLSX} className="gap-2 w-full sm:w-auto">
           <FileDown className="h-4 w-4" />
           Exportar XLSX
         </Button>

@@ -449,14 +449,14 @@ const columns: Column<any>[] = [
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="min-w-0">
           <h2 className="text-3xl font-bold text-foreground">Inventario</h2>
           <p className="text-muted-foreground mt-1">
             Gestión completa de productos y stock
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <ExcelUploadDialog
             onUploadComplete={fetchData}
             categorias={categorias}
@@ -470,7 +470,7 @@ const columns: Column<any>[] = [
             onClose={() => setEditingProduct(null)}
           />
           <button
-            className="px-3 py-2 rounded-md bg-destructive text-destructive-foreground disabled:opacity-50"
+            className="px-3 py-2 rounded-md bg-destructive text-destructive-foreground disabled:opacity-50 w-full sm:w-auto"
             disabled={!isAdmin || selectedProductIds.length === 0}
             onClick={() => setBulkDeleteOpen(true)}
             title={isAdmin ? (selectedProductIds.length ? `Eliminar ${selectedProductIds.length} seleccionados` : "Selecciona registros para eliminar") : "Permisos requeridos"}

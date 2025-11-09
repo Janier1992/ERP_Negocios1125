@@ -356,20 +356,20 @@ const Ventas = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="min-w-0">
           <h2 className="text-3xl font-bold text-foreground">Ventas</h2>
           <p className="text-muted-foreground mt-1">
             Punto de venta y registro de transacciones
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <ExcelUploadDialog onUploadComplete={fetchVentas} />
           <VentaDialog onVentaAdded={fetchVentas} />
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         <Card>
           <CardContent className="p-6">
             <div className="text-center">
@@ -440,8 +440,8 @@ const Ventas = () => {
                         {format(new Date(venta.created_at), "dd/MM/yyyy HH:mm")}
                       </TableCell>
                       <TableCell className="font-medium">{venta.cliente || "Cliente General"}</TableCell>
-                      <TableCell className="text-muted-foreground max-w-[240px] truncate">{(venta.cliente_email || "-")}</TableCell>
-                      <TableCell className="text-muted-foreground max-w-[280px] truncate">{(venta.cliente_direccion || "-")}</TableCell>
+                      <TableCell className="text-muted-foreground whitespace-normal break-words sm:max-w-[240px] sm:truncate">{(venta.cliente_email || "-")}</TableCell>
+                      <TableCell className="text-muted-foreground whitespace-normal break-words sm:max-w-[280px] sm:truncate">{(venta.cliente_direccion || "-")}</TableCell>
                       <TableCell className="text-right text-muted-foreground">{totalProductos}</TableCell>
                       <TableCell className="text-right font-semibold text-success">
                         ${Number(venta.total).toFixed(2)}

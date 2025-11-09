@@ -7,6 +7,8 @@ import { supabase } from "@/integrations/supabase/newClient";
 import { LogOut } from "lucide-react";
 import { toast } from "sonner";
 import { useUserProfile } from "@/hooks/useUserProfile";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
+import { ThemeToggle } from "@/components/system/ThemeToggle";
 // Onboarding eliminado: integramos la creación de empresa en el registro de Auth
 
 export const AppLayout = () => {
@@ -124,19 +126,24 @@ export const AppLayout = () => {
         <AppSidebar />
         <div className="flex-1 flex flex-col w-full">
           <header className="h-16 border-b border-border bg-card flex items-center justify-between px-4 sm:px-6 lg:px-8 sticky top-0 z-10">
-            <div className="flex items-center">
-              <SidebarTrigger className="mr-4" />
-              <h1 className="text-xl font-semibold text-foreground">{empresaNombre}</h1>
+            <div className="flex items-center gap-2">
+              <SidebarTrigger className="mr-2" />
+              <h1 className="text-xl font-semibold text-foreground truncate">{empresaNombre}</h1>
             </div>
-            <Button 
-              variant="ghost" 
-              size="sm"
-              onClick={handleLogout}
-              className="gap-2"
-            >
-              <LogOut className="h-4 w-4" />
-              Cerrar Sesión
-            </Button>
+            <div className="flex items-center gap-2">
+              <NotificationBell />
+              <ThemeToggle />
+              {/* Logout solo visible en escritorio */}
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={handleLogout}
+                className="gap-2 hidden md:flex"
+              >
+                <LogOut className="h-4 w-4" />
+                Cerrar Sesión
+              </Button>
+            </div>
           </header>
           <main className="flex-1 py-4 sm:py-6">
             <div className="app-container">

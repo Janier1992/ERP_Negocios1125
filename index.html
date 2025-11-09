@@ -3,6 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
     <title>Sistema ERP - Tiendas</title>
     <meta name="description" content="Sistema de Gestión Empresarial completo para ferreterías con inventario en tiempo real, gestión de ventas y alertas inteligentes">
     <meta name="author" content="Sistema ERP" />
@@ -15,16 +16,6 @@
 
   <body>
     <div id="root"></div>
-    <!-- Redirección en producción al BASE_URL para evitar pantalla en blanco cuando se sirve el build sin prefijo -->
-    <script type="module">
-      if (import.meta.env.PROD) {
-        const base = import.meta.env.BASE_URL || "/";
-        const path = window.location.pathname;
-        if (base !== "/" && !path.startsWith(base)) {
-          window.location.replace(base);
-        }
-      }
-    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

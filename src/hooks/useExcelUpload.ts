@@ -7,6 +7,20 @@ export const useExcelUpload = () => {
   const [loading, setLoading] = useState(false);
   const { empresaId } = useUserProfile();
 
+  // Normaliza celdas provenientes de Excel para evitar caracteres de control y fórmulas
+  const sanitizeCell = (val: any) => {
+    if (val == null) return "";
+    let s = String(val);
+    // Neutraliza posibles fórmulas al inicio
+    s = s.replace(/^([=\-\+@])+/, "");
+    // Elimina caracteres de control
+    s = s.replace(/[\u0000-\u001F\u007F]/g, " ");
+    // Colapsa espacios y recorta
+    s = s.replace(/\s+/g, " ").trim();
+    // Limita tamaño para prevenir entradas desmesuradas
+    return s.slice(0, 512);
+  };
+
   const uploadProveedores = async (file: File) => {
     if (!empresaId) throw new Error("No se encontró empresa asociada");
     
@@ -35,11 +49,11 @@ export const useExcelUpload = () => {
 
       const newProveedores = jsonData
         .map((row: any) => ({
-          nombre: String(row.nombre || "").trim(),
-          contacto: row.contacto ? String(row.contacto).trim() : null,
-          email: row.email ? String(row.email).trim() : null,
-          telefono: row.telefono ? String(row.telefono).trim() : null,
-          direccion: row.direccion ? String(row.direccion).trim() : null,
+          nombre: sanitizeCell(row.nombre || ""),
+          contacto: row.contacto ? sanitizeCell(row.contacto) : null,
+          email: row.email ? sanitizeCell(row.email) : null,
+          telefono: row.telefono ? sanitizeCell(row.telefono) : null,
+          direccion: row.direccion ? sanitizeCell(row.direccion) : null,
           empresa_id: empresaId,
         }))
         .filter(p => p.nombre && !existingNames.has(p.nombre.toLowerCase()));
@@ -87,7 +101,7 @@ export const useExcelUpload = () => {
       const existingCodes = new Set(existingProductos?.map(p => p.codigo.toLowerCase()) || []);
 
       // Detectar categorías y proveedores faltantes y crearlos antes de insertar productos
-      const normalize = (v: any) => String(v || "").trim().toLowerCase();
+      const normalize = (v: any) => sanitizeCell(v || "").toLowerCase();
       const existingCategoriaMap = new Map<string, string>(categorias.map((c: any) => [normalize(c.nombre), c.id]));
       const existingProveedorMap = new Map<string, string>(proveedores.map((p: any) => [normalize(p.nombre), p.id]));
 
@@ -143,13 +157,13 @@ export const useExcelUpload = () => {
 
       const newProductos = jsonData
         .map((row: any) => {
-          const codigo = String(row.codigo || "").trim();
+          const codigo = sanitizeCell(row.codigo || "");
           if (!codigo || existingCodes.has(codigo.toLowerCase())) return null;
 
           return {
             codigo,
-            nombre: String(row.nombre || "").trim(),
-            descripcion: row.descripcion ? String(row.descripcion).trim() : null,
+            nombre: sanitizeCell(row.nombre || ""),
+            descripcion: row.descripcion ? sanitizeCell(row.descripcion) : null,
             categoria_id: row.categoria ? categoriaMap.get(normalize(row.categoria)) || null : null,
             proveedor_id: row.proveedor ? proveedorMap.get(normalize(row.proveedor)) || null : null,
             precio: Number(row.precio) || 0,
@@ -211,7 +225,7 @@ export const useExcelUpload = () => {
       
       for (const row of jsonData) {
         const rowData = row as any;
-        const codigo = String(rowData.producto_codigo).trim().toLowerCase();
+        const codigo = sanitizeCell(rowData.producto_codigo).toLowerCase();
         const producto = productoMap.get(codigo);
         
         if (!producto) {
@@ -224,7 +238,7 @@ export const useExcelUpload = () => {
           throw new Error(`Stock insuficiente para ${rowData.producto_codigo}. Disponible: ${producto.stock}`);
         }
 
-        const key = `${rowData.fecha || new Date().toISOString().split('T')[0]}_${rowData.cliente || 'General'}`;
+        const key = `${sanitizeCell(rowData.fecha || new Date().toISOString().split('T')[0])}_${sanitizeCell(rowData.cliente || 'General')}`;
         if (!ventasAgrupadas.has(key)) {
           ventasAgrupadas.set(key, []);
         }
@@ -234,8 +248,8 @@ export const useExcelUpload = () => {
           cantidad,
           precio_unitario: Number(rowData.precio_unitario),
           subtotal: cantidad * Number(rowData.precio_unitario),
-          fecha: rowData.fecha,
-          cliente: rowData.cliente,
+          fecha: sanitizeCell(rowData.fecha),
+          cliente: sanitizeCell(rowData.cliente),
           metodo_pago: rowData.metodo_pago,
         });
       }
@@ -250,7 +264,7 @@ export const useExcelUpload = () => {
         const { data: venta, error: ventaError } = await supabase
           .from("ventas")
           .insert({
-            cliente: items[0].cliente || null,
+            cliente: sanitizeCell(items[0].cliente) || null,
             metodo_pago: items[0].metodo_pago,
             total,
             empresa_id: empresaId,
@@ -292,7 +306,7 @@ export const useExcelUpload = () => {
 
         // Upsert automático del cliente en módulo Clientes
         try {
-          const nombreCliente = String(items[0].cliente || "").trim();
+          const nombreCliente = sanitizeCell(items[0].cliente || "");
           if (nombreCliente) {
             const nowIso = venta.created_at ? new Date(venta.created_at).toISOString() : (items[0].fecha ? new Date(items[0].fecha).toISOString() : new Date().toISOString());
             const { data: existing } = await supabase

@@ -20,6 +20,10 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { Button } from "@/components/ui/button";
+import { LogOut } from "lucide-react";
+import { supabase } from "@/integrations/supabase/newClient";
+import { toast } from "sonner";
 
 const menuItems = [
   {
@@ -68,7 +72,7 @@ const menuItems = [
 ];
 
 export function AppSidebar() {
-  const { state } = useSidebar();
+  const { state, isMobile, setOpen, setOpenMobile } = useSidebar();
   const location = useLocation();
   const isCollapsed = state === "collapsed";
 
@@ -76,6 +80,27 @@ export function AppSidebar() {
     isActive
       ? "bg-sidebar-accent text-sidebar-primary font-medium"
       : "hover:bg-sidebar-accent/50";
+
+  const handleAfterNavigate = () => {
+    // Colapsar en escritorio y cerrar en móvil
+    try { setOpen(false); } catch {}
+    try { setOpenMobile(false); } catch {}
+  };
+
+  const handleLogout = async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) { toast.error("Error al cerrar sesión"); return; }
+      toast.success("Sesión cerrada exitosamente");
+    } catch (err) {
+      console.error("[Sidebar Logout] Exception:", err);
+      toast.error("Error al cerrar sesión");
+      return;
+    } finally {
+      await new Promise((res) => setTimeout(res, 200));
+      window.location.href = `${import.meta.env.BASE_URL}auth`;
+    }
+  };
 
   return (
     <Sidebar
@@ -105,6 +130,7 @@ export function AppSidebar() {
                       <NavLink
                         to={item.url}
                         className={getNavClasses(isActive)}
+                        onClick={handleAfterNavigate}
                       >
                         <item.icon className="h-5 w-5" />
                         {!isCollapsed && <span>{item.title}</span>}
@@ -116,6 +142,16 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        {/* Pie con logout en móvil */}
+        {isMobile && (
+          <div className="mt-auto p-4 border-t border-sidebar-border">
+            <Button variant="ghost" className="w-full justify-start gap-2" onClick={handleLogout}>
+              <LogOut className="h-4 w-4" />
+              Cerrar Sesión
+            </Button>
+          </div>
+        )}
       </SidebarContent>
     </Sidebar>
   );

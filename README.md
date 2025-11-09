@@ -4,6 +4,26 @@
 
 Aplicación ERP ligera para PyMEs que integra autenticación, usuarios y roles, inventario, proveedores, clientes, compras, ventas, finanzas, cuentas por pagar, promociones, invitaciones y auditoría, con seguridad basada en RLS de Supabase.
 
+## Seguridad: CSP y Verificación
+
+- Política CSP por entorno (inyectada en build):
+  - Producción: sin `'unsafe-inline'` ni `'unsafe-eval'`; permite scripts y conexiones sólo a `self` y `*.supabase.co`; incluye `upgrade-insecure-requests`.
+  - Desarrollo: permite HMR (`ws:`) y `'unsafe-inline'`/`'unsafe-eval'` para tooling.
+- Implementación:
+  - `vite.config.ts` añade el meta CSP vía `transformIndexHtml` según `mode`.
+  - `index.html` no contiene scripts inline de redirección.
+  - `src/main.tsx` maneja la redirección de producción usando `import.meta.env.BASE_URL`.
+- Verificar en desarrollo:
+  - `npm run dev` → abrir `http://localhost:8080` (o el puerto activo).
+  - Comprobar en el inspector que existe un único `<meta http-equiv="Content-Security-Policy">` y que no hay violaciones en consola.
+  - Confirmar HMR activo (modificar un componente y ver refresco).
+- Verificar en producción local:
+  - `npm run build` y `npm run preview`.
+  - No deben existir scripts inline en `head`; consola sin errores CSP; Supabase debe conectar.
+- Añadir orígenes si fuera necesario:
+  - Editar `vite.config.ts` y agregar el dominio requerido en `script-src`, `connect-src` o `img-src` según el caso.
+  - Evitar reintroducir `'unsafe-inline'` en producción; preferir mover cualquier script/estilo inline a archivos.
+
 ## Características principales
 
 - Autenticación con Supabase Auth y perfiles (`profiles`).
@@ -219,11 +239,45 @@ npx vitest
 - Sirve `dist/` en tu hosting estático preferido y configura variables `VITE_...` en el entorno del servidor.
 - Para funciones Edge, usa Supabase CLI o dashboard para desplegar y configurar `SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY`.
 
+### Checklist de publicación (CSP y entorno)
+
+- Build y preview local:
+  - Ejecuta `npm run build` y `npm run preview`.
+  - En consola del navegador no deben aparecer violaciones de CSP.
+  - Verifica que no haya scripts inline en `head` y que exista un único meta CSP.
+- Variables de entorno del frontend:
+  - Define `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY` en producción.
+  - Ajusta `VITE_PUBLIC_SITE_URL` si usas redirecciones por correo.
+- Supabase (seguridad y migraciones):
+  - Aplica migraciones más recientes (`supabase db push`).
+  - Confirma RLS activo en tablas principales y políticas por `empresa_id`.
+  - Asegura que el trigger de autoconfirmación de email esté deshabilitado en producción (migración `20251109_160_disable_autoconfirm_trigger.sql`).
+- Orígenes externos:
+  - Si agregas nuevos dominios (APIs, CDNs), inclúyelos en `connect-src`, `img-src` o `script-src` en `vite.config.ts` (sólo lo necesario).
+  - Evita `'unsafe-inline'`/`'unsafe-eval'` en producción; mueve cualquier script/estilo inline a archivos.
+- Hosting estático:
+  - Para GitHub Pages, confirma `base: "/MiNegocio-ERP/"` y la redirección en `src/main.tsx`.
+- Pruebas funcionales rápidas:
+  - Login/logout, navegación por páginas principales, exportar e importar Excel.
+  - Validar que Supabase conecte (sin errores de `connect-src`).
+
 ## Solución de problemas
 
 - `ERR_NAME_NOT_RESOLVED` al iniciar: revisa `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY` en `.env`.
 - Error 42601 al crear `app_role`: ya corregido con bloque `DO $$ ... $$` en la migración.
 - Denegación por RLS: verifica que el usuario esté vinculado a una `empresa` en `profiles` y tenga roles/permissions adecuados.
+
+### Error al cargar métricas del Dashboard
+
+- Síntoma: aparece un aviso "Error al cargar métricas del Dashboard" al abrir la página.
+- Causa raíz habitual: fallas de relaciones PostgREST al usar joins implícitos (p.ej. `productos -> categorias`) o discrepancias de esquema en caché.
+- Corrección aplicada:
+  - Se eliminó el join `categorias(nombre)` en `Dashboard.tsx` y se consultan `categorias` por separado, mapeando por `categoria_id`.
+  - Se añadió manejo granular de errores por consulta y registros en consola para diagnóstico sin interrumpir la carga completa del dashboard.
+- Verificación:
+  - Inicia `npm run dev` y abre `http://localhost:8081/`.
+  - No deben aparecer toasts de error; las métricas y gráficos se muestran con datos disponibles.
+  - Prueba también `npm run build` + `npm run preview` (`http://localhost:4173/MiNegocio-ERP/`).
 
 ### Pantalla no visible / "Service is unavailable"
 

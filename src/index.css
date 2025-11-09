@@ -139,7 +139,8 @@ All colors MUST be HSL.
   }
 
   body {
-    @apply bg-background text-foreground;
+    /* Evita desplazamiento horizontal global y asegura fondo/foreground */
+    @apply bg-background text-foreground overflow-x-hidden;
   }
 
   img, svg, video, canvas { 
@@ -158,4 +159,14 @@ All colors MUST be HSL.
   .page-section {
     @apply w-full py-4 sm:py-6;
   }
+}
+
+/* Utilidades específicas para interacción táctil y contención de scroll */
+@layer utilities {
+  .touch-pan {
+    touch-action: pan-x pan-y;
+    -ms-touch-action: pan-x pan-y;
+  }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 }
