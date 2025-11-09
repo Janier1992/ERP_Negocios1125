@@ -4,6 +4,9 @@ import path from "path";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
+  // Para despliegue en GitHub Pages (proyecto MiNegocio-ERP)
+  // En producción, asegura rutas correctas: janier1992.github.io/MiNegocio-ERP/
+  base: mode === "production" ? "/MiNegocio-ERP/" : "/",
   server: {
     host: true,
     port: 8080,
