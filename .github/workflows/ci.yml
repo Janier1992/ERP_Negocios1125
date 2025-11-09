@@ -24,6 +24,10 @@ jobs:
 
       - name: Build
         run: npm run build
+        env:
+          # Valores dummy para evitar fallos en build cuando no hay secretos
+          VITE_SUPABASE_URL: https://example.supabase.co
+          VITE_SUPABASE_ANON_KEY: example_anon_key
 
       # Opcional: subir artefacto de build
       - name: Upload dist artifact
