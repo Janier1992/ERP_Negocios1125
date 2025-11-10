@@ -286,6 +286,11 @@ npx vitest
 - Assets no cargan: verifica que la URL incluya `/MiNegocioPymes/` y reconstruye (`npm run build`).
 - Errores de CSP: en producción se permite `style-src 'unsafe-inline'` para compatibilidad con GitHub Pages; los scripts inline siguen bloqueados.
 - Datos no cargan: revisa que los secretos de Supabase estén definidos en el repositorio y que el proyecto de Supabase acepte conexiones desde el sitio.
+ - 404 de `main.tsx` y `favicon.svg` en Pages:
+   - Síntoma: en consola aparecen 404 para `/src/main.tsx` y `/favicon.svg`.
+   - Causa: rutas absolutas en `index.html` que ignoran la `base` del repositorio.
+   - Corrección: usar rutas relativas en `index.html` (`href="favicon.svg"` y `src="src/main.tsx"`).
+   - Verificación: ejecutar `npm run build` y abrir `https://janier1992.github.io/MiNegocioPymes/`; no deben aparecer 404 en consola.
 
 ### Checklist de publicación (CSP y entorno)
 
@@ -314,6 +319,25 @@ npx vitest
 - `ERR_NAME_NOT_RESOLVED` al iniciar: revisa `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY` en `.env`.
 - Error 42601 al crear `app_role`: ya corregido con bloque `DO $$ ... $$` en la migración.
 - Denegación por RLS: verifica que el usuario esté vinculado a una `empresa` en `profiles` y tenga roles/permissions adecuados.
+
+### CI/CD (GitHub Actions)
+
+- `npm ci` falla en Actions por lockfile mismatch:
+  - Síntoma: el job “Install dependencies” falla indicando que `package-lock.json` no coincide con `package.json`.
+  - Causa: el lockfile quedó desalineado tras cambios locales de dependencias.
+  - Corrección: `npm install --package-lock-only` (Node 20/npm 10), luego `git add package-lock.json; git commit -m "ci: regenerate lock"; git push`.
+  - Recomendación: mantener `npm ci` en los workflows para instalaciones deterministas.
+
+- EPERM en Windows al ejecutar `npm ci` local:
+  - Síntoma: `EPERM: operation not permitted, unlink ... esbuild.exe`.
+  - Causa: el servidor de desarrollo mantiene abierto el binario de `esbuild`.
+  - Corrección: detener el servidor dev (`npm run dev`) antes de `npm ci`; volver a ejecutar la instalación limpia.
+
+### Push rechazado (git)
+
+- Rechazo “fetch first” al hacer `git push`:
+  - Causa: historial divergente con `origin/main`.
+  - Corrección: `git pull --rebase origin main` y luego `git push`.
 
 ### Error al cargar métricas del Dashboard
 
