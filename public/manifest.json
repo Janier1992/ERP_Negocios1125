@@ -1,0 +1,19 @@
+{
+  "name": "MiNegocio Pymes",
+  "short_name": "NegocioPymes",
+  "description": "Gestión de ventas, inventario y proveedores para pymes.",
+  "lang": "es",
+  "start_url": "/MiNegocioPymes/auth",
+  "scope": "/MiNegocioPymes/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0ea5e9",
+  "icons": [
+    {
+      "src": "favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "any maskable"
+    }
+  ]
+}
