@@ -144,8 +144,8 @@ export function AppSidebar() {
 
   return (
     <Sidebar
-      className={isCompactViewport ? (isCollapsed ? "w-14" : "w-64") : "w-64"}
-      collapsible={isCompactViewport ? "icon" : "none"}
+      className={isCollapsed ? "w-14" : "w-64"}
+      collapsible="icon"
     >
       <SidebarContent>
         <div className="p-4">
