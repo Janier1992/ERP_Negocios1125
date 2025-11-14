@@ -1,13 +1,17 @@
 {
-  "name": "MiNegocio Pymes",
-  "short_name": "NegocioPymes",
-  "description": "Gestión de ventas, inventario y proveedores para pymes.",
+  "name": "Mi-NegocioERP",
+  "short_name": "NegocioERP",
+  "description": "Aplicacion para gestion de pequeños y medianos",
   "lang": "es",
+  "dir": "ltr",
   "start_url": "/MiNegocioPymes/auth",
   "scope": "/MiNegocioPymes/",
   "display": "standalone",
+  "orientation": "any",
   "background_color": "#ffffff",
   "theme_color": "#0ea5e9",
+  "prefer_related_applications": false,
+  "categories": ["business", "productivity"],
   "icons": [
     {
       "src": "favicon.svg",
