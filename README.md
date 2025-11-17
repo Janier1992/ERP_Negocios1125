@@ -4,6 +4,69 @@
 
 Aplicación ERP ligera para PyMEs que integra autenticación, usuarios y roles, inventario, proveedores, clientes, compras, ventas, finanzas, cuentas por pagar, promociones, invitaciones y auditoría, con seguridad basada en RLS de Supabase.
 
+## Descripción del proyecto
+
+Mi_NegocioERP es una aplicación web SPA desarrollada con React, Vite y TypeScript, orientada a la gestión integral de pequeñas y medianas empresas. Incluye módulos de autenticación, inventario, ventas, compras, finanzas y auditoría, con control de acceso por roles y políticas RLS en Postgres (Supabase). Está optimizada para despliegues estáticos (p. ej., GitHub Pages) y para integrarse con Supabase como Backend as a Service.
+
+## Instalación rápida
+
+- Requisitos: Node.js >= 18 y npm.
+- Clona el repositorio y entra al proyecto:
+- Configura el entorno en `.env` con tus credenciales de Supabase.
+
+```sh
+git clone https://github.com/Janier1992/Mi_NegocioERP.git
+cd Mi_NegocioERP
+npm install
+
+# .env (ejemplo)
+VITE_SUPABASE_URL=https://<tu-project-ref>.supabase.co
+VITE_SUPABASE_ANON_KEY=<tu_anon_key>
+```
+
+## Ejecución en desarrollo
+
+```sh
+npm run dev
+# Abre http://localhost:8080
+```
+
+- Si editas variables `VITE_...` en `.env`, reinicia el servidor de Vite para aplicar cambios.
+- Verifica conectividad de Auth con Supabase en `/auth` (ver sección de diagnóstico más abajo).
+
+## Compilación para producción
+
+```sh
+npm run build
+npm run preview
+# Preview local: http://localhost:4173
+```
+
+- Publica el contenido de `dist/` en tu hosting estático.
+- Si despliegas en una subruta (p. ej., GitHub Pages), ajusta `base` en `vite.config.ts` y valida rutas de assets.
+
+## Pruebas
+
+- Pruebas unitarias con Vitest:
+
+```sh
+npm test
+# o
+npx vitest run
+```
+
+- Las pruebas clave incluyen lógica de precios y alertas en `tests/*.spec.ts`.
+- Si reintroduces Testing Library y `jsdom`, añade `src/test/setup.ts` y configura `vitest.config.ts` según tus necesidades.
+
+## Despliegue en GitHub Pages
+
+- Este repositorio incluye `.github/workflows/pages.yml` para construir y publicar automáticamente.
+- Pasos rápidos:
+  - Ajusta `base` en `vite.config.ts` si tu sitio se sirve bajo una subruta.
+  - Define secretos `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY` en GitHub Actions.
+  - Activa Pages en Settings → Pages y selecciona GitHub Actions.
+  - Tras hacer push a `main`, tu sitio se despliega en pocos minutos.
+
 ## Seguridad: CSP y Verificación
 
 - Política CSP por entorno (inyectada en build):

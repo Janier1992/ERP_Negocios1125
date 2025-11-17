@@ -12,10 +12,10 @@ export default defineConfig(({ mode }) => {
   const devCsp = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.supabase.co; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://*.supabase.co; connect-src 'self' https://*.supabase.co ws:; font-src 'self' data:; worker-src 'self'; base-uri 'self'; form-action 'self'";
   const prodCsp = "default-src 'self'; script-src 'self' https://*.supabase.co; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://*.supabase.co; connect-src 'self' https://*.supabase.co; font-src 'self' data:; worker-src 'self'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests";
 
+  const baseFromEnv = process.env.VITE_BASE;
   return ({
-  // Para despliegue en GitHub Pages (repositorio MiNegocioPymes)
-  // En producción, asegura rutas correctas: janier1992.github.io/MiNegocioPymes/
-  base: mode === "production" ? "/MiNegocioPymes/" : "/",
+  // Base ajustable por entorno. En Vercel debe ser "/".
+  base: baseFromEnv ?? "/",
   server: {
     host: true,
     port: 8080,

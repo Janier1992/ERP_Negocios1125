@@ -9,6 +9,7 @@
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "preview": "vite preview",
+    "start": "vite preview",
     "depcheck": "npx depcheck",
     "test": "vitest run"
   },
