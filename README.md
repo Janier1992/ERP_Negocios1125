@@ -67,6 +67,37 @@ npx vitest run
   - Activa Pages en Settings → Pages y selecciona GitHub Actions.
   - Tras hacer push a `main`, tu sitio se despliega en pocos minutos.
 
+## Deploy en Vercel
+
+Este repositorio incluye `vercel.json` para despliegue estático con SPA:
+
+- `buildCommand`: `npm run build`
+- `outputDirectory`: `dist`
+- `rewrites`: todas las rutas se sirven desde `/index.html` (fallback SPA)
+
+Pasos para conectar el proyecto a Vercel:
+
+1. Importa el repositorio desde GitHub:
+   - Abre: [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/Janier1992/Mi_NegocioERP&env=VITE_SUPABASE_URL,VITE_SUPABASE_ANON_KEY,VITE_PUBLIC_SITE_URL&project-name=mi-negocioerp&repo-name=Mi_NegocioERP)
+   - El asistente detectará `Vite` y usará `npm run build` y `dist/`.
+
+2. Variables de entorno (Production y Preview):
+   - `VITE_SUPABASE_URL` — URL del proyecto Supabase.
+   - `VITE_SUPABASE_ANON_KEY` — clave anónima de Supabase.
+   - `VITE_PUBLIC_SITE_URL` — dominio público de tu app en Vercel.
+
+3. Primera publicación y verificación:
+   - Vercel construirá y publicará el sitio; abre la URL del deployment.
+   - En Vercel la `base` es `/` por defecto, por lo que no definas `VITE_BASE`.
+   - Revisa en DevTools que no haya 404 de assets ni errores de CSP.
+
+4. (Opcional) Dominio personalizado:
+   - En `Project Settings → Domains`, añade tu dominio y verifica.
+
+Notas:
+- Si también usas GitHub Pages, recuerda establecer `VITE_BASE` con la subruta del repo en el build de Pages.
+- Para Supabase Auth, configura correctamente las URLs de redirección en `Authentication → URL Configuration` (incluye tu dominio de Vercel y `http://localhost:8080` para desarrollo).
+
 ## Seguridad: CSP y Verificación
 
 - Política CSP por entorno (inyectada en build):
