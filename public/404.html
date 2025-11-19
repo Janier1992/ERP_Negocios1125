@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Redirigiendo…</title>
+    <meta http-equiv="refresh" content="0; URL=/ERP_Negocios1125/" />
+    <script>
+      (function () {
+        var target = "/ERP_Negocios1125/";
+        // Normaliza barras y asegura slash final
+        target = target.replace(/\/+$/,'/')
+        if (!/\/$/.test(target)) target += "/";
+        try {
+          if (location.pathname.indexOf(target) !== 0) {
+            location.replace(target);
+          }
+        } catch (_) {
+          location.href = target;
+        }
+      })();
+    </script>
+    <style>
+      body { font: 14px/1.6 system-ui, -apple-system, Segoe UI, Roboto, sans-serif; padding: 2rem; }
+    </style>
+  </head>
+  <body>
+    Redirigiendo a la aplicación… Si no avanza, abre <a href="/ERP_Negocios1125/">/ERP_Negocios1125/</a>.
+  </body>
+</html>
