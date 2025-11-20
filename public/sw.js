@@ -1,6 +1,7 @@
 const CACHE_NAME = "mnp-cache-v4";
 // Deriva la base dinámicamente del scope del Service Worker
 const BASE = new URL(self.registration.scope).pathname.replace(/\/+$/, "/");
+// Algunos navegadores móviles inician fuera del scope. Aseguramos INDEX con BASE.
 const INDEX = `${BASE}index.html`;
 const SHELL = [INDEX, `${BASE}favicon.svg`, `${BASE}manifest.json`];
 
@@ -32,6 +33,7 @@ self.addEventListener("fetch", (event) => {
 
   const url = new URL(request.url);
   const sameOrigin = url.origin === self.location.origin;
+  const inScope = url.pathname.startsWith(BASE);
 
   // Navegación SPA: network-first con fallback a INDEX offline
   if (request.mode === "navigate") {
@@ -41,6 +43,10 @@ self.addEventListener("fetch", (event) => {
       const controller = new AbortController();
       const id = setTimeout(() => controller.abort(), timeoutMs);
       try {
+        // Si la navegación está fuera de scope (móviles), redirige a BASE
+        if (!inScope) {
+          return Response.redirect(INDEX, 302);
+        }
         const resp = await fetch(request, { signal: controller.signal });
         clearTimeout(id);
         return resp;
